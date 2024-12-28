@@ -66,7 +66,8 @@ print(f"Number of rows: {nrows}")
 
 ### count the number of nunique and non-null values for each column
 # get files
-files = os.listdir(dirpath)
+#files = os.listdir(dirpath)
+files = [f"Network_dataset_{i}.csv" for i in range(1,24)]
 
 #dictionary {"column_name": (nunique, non-null)}
 values_stats = dict()
@@ -83,3 +84,14 @@ for column in headers:
     del frames
 
 print(values_stats)
+
+#count the number of normal and attack records
+normal_count = 0
+attack_count = 0
+    
+for f in files:
+    partial_df = pd.read_csv(dirpath + f, sep=',', dtype=attr_types, usecols=['label'])
+    normal_count = normal_count + (partial_df['label'] == 0).sum()
+    attack_count = attack_count + (partial_df['label'] == 1).sum()
+        
+print(f"N. normal traffic records: {normal_count}.\nN. attack traffic records: {attack_count}.")
