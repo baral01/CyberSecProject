@@ -241,6 +241,12 @@ CATEGORICAL_FEATURES.remove('Timestamp')
 #CATEGORICAL_FEATURES.remove('Label')
 targets_list = df['Label'].unique().tolist()
 
+# convert integer types to float, resolve future warning of implicit casting of TabTransformer
+for col in NUMERICAL_FEATURES:
+    is_int = pd.api.types.is_integer_dtype(df[col])
+    if is_int:
+        df[col] = df[col].astype('float64')
+
 # split into train and test set
 start_time = time.time()
 time_str = time.strftime("%R")
@@ -269,6 +275,7 @@ trainer_config = TrainerConfig(
     early_stopping_patience=5,  # No. of epochs of degradation training will wait before terminating
     checkpoints="valid_loss",  # Save best checkpoint monitoring val_loss
     load_best=True,  # After training, load the best checkpoint
+    profiler='simple', # https://pytorch-lightning.readthedocs.io/en/1.5.10/advanced/profiler.html
 )
 
 optimizer_config = OptimizerConfig()
@@ -296,24 +303,47 @@ tabular_model = TabularModel(
     trainer_config=trainer_config,
 )
 print("Model initialized.")
+start_training_time = time.time()
 tabular_model.fit(train=train)
-print("Model training completed.")
-tabular_model.evaluate(test)
-print("Model evaluation completed.")
+end_training_time = time.time()
+training_time = end_training_time - start_training_time
+print(f"Model training completed. Elapsed {training_time}s.")
 
+print("Evaluating model...")
+start_evaluation_time = time.time()
+tabular_model.evaluate(test)
+end_evaluation_time = time.time()
+evaluation_time = end_evaluation_time - start_evaluation_time
+print(f"Model evaluation completed. Elapsed {evaluation_time}s.")
+
+print("Test predictions (obtain average inference time)...")
+test_rows = test.shape[0]
+start_predictions_time = time.time()
+# predictions columns: [benign_probability, attack_probability, predicted_label]
 predictions = tabular_model.predict(test=test)
+end_predictions_time = time.time()
+predictions_time = end_predictions_time - start_predictions_time
+print(f"Predictions completed. Elapsed {predictions_time}s.")
+average_inference_time = predictions_time / test_rows
+print(f"Average inference time: {average_inference_time}s.")
+
+print("---Other metrics---")
 probs = torch.tensor((predictions.iloc[:, 1]).values)
 preds = torch.tensor((predictions.iloc[:, 2]).values)
 test_target = torch.tensor(test['Label'].values)
 confmat = ConfusionMatrix(task='binary', num_classes=num_classes)
 res = confmat(preds, test_target)
-print(res)
+print("Confusion Matrix:")
+print(f"True Negatives: {res[0, 0]}")
+print(f"False Positives: {res[0, 1]}")
+print(f"False Negatives: {res[1, 0]}")
+print(f"True Positives: {res[1, 1]}")
 f1 = F1Score(task='binary', num_classes=num_classes)
 res = f1(preds, test_target)
-print(res)
+print(f"F1_Score: {res.item()}")
 auroc = AUROC(task="binary")
 res = auroc(probs, test_target)
-print(res)
+print(f"AUROC_Score: {res.item()}")
 
 savepath = "Models/ids2018/tabtransformer-" + time.strftime('%Y%m%d-%H%M')
 os.makedirs(savepath)
