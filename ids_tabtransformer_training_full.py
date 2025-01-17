@@ -9,6 +9,9 @@ from pytorch_tabular.config import DataConfig, OptimizerConfig, TrainerConfig
 from pytorch_tabular.models import TabTransformerConfig
 from pytorch_tabular.models.common.heads import LinearHeadConfig
 
+import torch
+from torchmetrics import ConfusionMatrix, F1Score, AUROC
+
 import ids_preprocessing
 import time
 import os
@@ -178,7 +181,7 @@ proc_types = {
     "Idle Std": "float64",
     "Idle Max": "float64",
     "Idle Min": "float64",
-    "Label": "int8",
+    "Label": "string",
 }
 files = os.listdir(dirpath)
 start_time = time.time()
@@ -246,6 +249,7 @@ train, test = train_test_split(df, stratify=df["Label"], test_size=0.2, random_s
 end_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
+num_classes = len(set(train["Label"].values.ravel()))
 
 # prepare model
 data_config = DataConfig(
@@ -280,6 +284,9 @@ model_config = TabTransformerConfig(
     learning_rate=1e-3,
     head="LinearHead",  # Linear Head
     head_config=head_config,  # Linear Head Config
+    metrics=['accuracy', 'f1_score', 'precision', 'recall', 'auroc'], #found in Lib/site-packages/torchmetrics/functional/__init__.py
+    metrics_prob_input=[False, False, False, False, True],
+    metrics_params=[{'task': 'binary', 'num_classes': num_classes}, {'task': 'binary', 'num_classes': num_classes}, {'task': 'binary', 'num_classes': num_classes}, {'task': 'binary', 'num_classes': num_classes}, {}],
 )
 
 tabular_model = TabularModel(
@@ -288,8 +295,26 @@ tabular_model = TabularModel(
     optimizer_config=optimizer_config,
     trainer_config=trainer_config,
 )
+print("Model initialized.")
 tabular_model.fit(train=train)
+print("Model training completed.")
 tabular_model.evaluate(test)
+print("Model evaluation completed.")
+
+predictions = tabular_model.predict(test=test)
+probs = torch.tensor((predictions.iloc[:, 1]).values)
+preds = torch.tensor((predictions.iloc[:, 2]).values)
+test_target = torch.tensor(test['Label'].values)
+confmat = ConfusionMatrix(task='binary', num_classes=num_classes)
+res = confmat(preds, test_target)
+print(res)
+f1 = F1Score(task='binary', num_classes=num_classes)
+res = f1(preds, test_target)
+print(res)
+auroc = AUROC(task="binary")
+res = auroc(probs, test_target)
+print(res)
+
 savepath = "Models/ids2018/tabtransformer-" + time.strftime('%Y%m%d-%H%M')
 os.makedirs(savepath)
 tabular_model.save_model(savepath)
