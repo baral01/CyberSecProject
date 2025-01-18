@@ -3,6 +3,14 @@ from xgboost import XGBClassifier
 # from sklearn.preprocessing import TargetEncoder
 import category_encoders as ce
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+    confusion_matrix,
+)
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -183,7 +191,7 @@ print(f"<{time_str}> Loading dataset...")
 frames = list()
 for f in files:
     print(f"Loaded file {f}")
-    partial_df = pd.read_csv(dirpath + f, sep=',', usecols=proc_cols)
+    partial_df = pd.read_csv(dirpath + f, sep=",", usecols=proc_cols)
     frames.append(partial_df)
 print("Combining frames...")
 df = pd.concat(frames)
@@ -195,7 +203,7 @@ print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
 ###preprocessing
 
 # convert timestamps
-times_features = ['dow', 'hour', 'minute']
+times_features = ["dow", "hour", "minute"]
 start_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Replacing 'Timestamp' column with {times_features}...")
@@ -273,81 +281,54 @@ print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
 start_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Training...")
-# #params to be passed to the model
-# params = {
-#     "n_estimators": 2,
-#     "max_depth": 6,
-#     "learning_rate": 0.3
-# }
 
 # # create model instance
-# bst = XGBClassifier(
-#     n_estimators=2, max_depth=2, learning_rate=0.1, objective="binary:logistic"
-# )
-# # fit model
-# start_time = time.time()
-# time_str = time.strftime("%R")
-# print(f"<{time_str}> Training...")
-# print("X shape: " + str(X_train.shape))
-# print("Y shape: " + str(y_train.shape))
-# bst.fit(X_train, y_train)
-# end_time = time.time()
-# time_str = time.strftime("%R")
-# print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
-# # make predictions
-# preds = bst.predict(X_test)
-# print(preds)
-
-# XGBoost (different learning rate)
-
-# learning_rate_range = np.arange(0.01, 1, 0.05)
-# test_XG = []
-# train_XG = []
-# for lr in learning_rate_range:
-#     xgb_classifier = XGBClassifier(learning_rate=lr)
-#     xgb_classifier.fit(X_train, y_train)
-#     train_XG.append(xgb_classifier.score(X_train, y_train))
-#     test_XG.append(xgb_classifier.score(X_test, y_test))
-# fig = plt.figure(figsize=(10, 7))
-# plt.plot(learning_rate_range, train_XG, c='orange', label='Train')
-# plt.plot(learning_rate_range, test_XG, c='m', label='Test')
-# plt.xlabel('Learning rate')
-# plt.xticks(learning_rate_range)
-# plt.ylabel('Accuracy score')
-# plt.ylim(0.6, 1)
-# plt.legend(prop={'size': 12}, loc=3)
-# plt.title('Accuracy score vs. Learning rate of XGBoost', size=14)
-# plt.show()
-# # Resolve overfitting
-# new learning rate range
-learning_rate_range = np.arange(0.01, 0.5, 0.05)
-fig = plt.figure(figsize=(19, 17))
-idx = 1
-# grid search for min_child_weight
-for weight in np.arange(0, 4.5, 0.5):
-    time_str = time.strftime("%R")
-    print(f"<{time_str}> Current weight: {weight}")
-    train = []
-    test = []
-    for lr in learning_rate_range:
-        time_str = time.strftime("%R")
-        print(f"<{time_str}> Current lr: {lr}")
-        xgb_classifier = XGBClassifier(eta=lr, reg_lambda=1, min_child_weight=weight)
-        xgb_classifier.fit(X_train, y_train)
-        train.append(xgb_classifier.score(X_train, y_train))
-        test.append(xgb_classifier.score(X_test, y_test))
-    fig.add_subplot(3, 3, idx)
-    idx += 1
-    plt.plot(learning_rate_range, train, c="orange", label="Training")
-    plt.plot(learning_rate_range, test, c="m", label="Testing")
-    plt.xlabel("Learning rate")
-    plt.xticks(learning_rate_range)
-    plt.ylabel("Accuracy score")
-    plt.ylim(0.6, 1)
-    plt.legend(prop={"size": 12}, loc=3)
-    title = "Min child weight:" + str(weight)
-    plt.title(title, size=16)
-plt.show()
+model = XGBClassifier(
+    learning_rate=0.3,
+    objective="binary:logistic",
+    eval_metric=["logloss", "error", "auc"],
+    #verbosity=2,
+)
+# fit model
+start_training_time = time.time()
+model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+end_training_time = time.time()
+training_time = end_training_time - start_training_time
 end_time = time.time()
 time_str = time.strftime("%R")
-print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
+print(f"<{time_str}> Done. Elapsed {training_time}s.")
+savepath = "Models/ids2018/xgboost-" + time.strftime('%Y%m%d-%H%M') + "/"
+os.makedirs(savepath)
+model.save_model(savepath + "xgboost_model.json")
+# scores = model.evals_result()
+# print("XGBoost evaluation results:")
+# print(scores)
+
+### make predictions and compute other scores
+# get predictions
+start_prediction_time = time.time()
+y_pred = model.predict(X_test)
+end_prediction_time = time.time()
+num_rows = X_test.shape[0]
+infer_time = (end_prediction_time - start_prediction_time) / num_rows
+# get probabilities for positive class (malicious traffic)
+y_pred_proba = model.predict_proba(X_test)[:, 1]
+accuracy = accuracy_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+roc_auc = roc_auc_score(y_test, y_pred_proba)
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+print(f"Average inference time: {infer_time}")
+print(f"Accuracy: {accuracy}")
+print(f"F1 Score: {f1}")
+print(f"Precision: {precision}")
+print(f"Recall: {recall}")
+print(f"ROC AUC: {roc_auc}")
+print("Confusion Matrix:")
+print(f"True Negatives: {conf_matrix[0][0]}")
+print(f"False Positives: {conf_matrix[0][1]}")
+print(f"False Negatives: {conf_matrix[1][0]}")
+print(f"True Positives: {conf_matrix[1][1]}")
+
