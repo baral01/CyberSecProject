@@ -238,14 +238,12 @@ print(
     f"Numericals: {len(NUMERICAL_FEATURES)}; Categoricals: {len(CATEGORICAL_FEATURES)}"
 )
 CATEGORICAL_FEATURES.remove('Timestamp')
-#CATEGORICAL_FEATURES.remove('Label')
-targets_list = df['Label'].unique().tolist()
-
 # convert integer types to float, resolve future warning of implicit casting of TabTransformer
 for col in NUMERICAL_FEATURES:
     is_int = pd.api.types.is_integer_dtype(df[col])
     if is_int:
         df[col] = df[col].astype('float64')
+NUMERICAL_FEATURES.remove('Label')
 
 # split into train and test set
 start_time = time.time()
@@ -302,28 +300,42 @@ tabular_model = TabularModel(
     optimizer_config=optimizer_config,
     trainer_config=trainer_config,
 )
-print("Model initialized.")
+time_str = time.strftime("%R")
+print(f"<{time_str}> Model initialized.")
 start_training_time = time.time()
 tabular_model.fit(train=train)
 end_training_time = time.time()
 training_time = end_training_time - start_training_time
-print(f"Model training completed. Elapsed {training_time}s.")
+time_str = time.strftime("%R")
+print(f"<{time_str}> Model training completed. Elapsed {training_time}s.")
 
-print("Evaluating model...")
+time_str = time.strftime("%R")
+print(f"<{time_str}>Saving model...")
+savepath = "Models/ids2018/tabtransformer-" + time.strftime('%Y%m%d-%H%M') + "/"
+os.makedirs(savepath)
+tabular_model.save_model(savepath)
+time_str = time.strftime("%R")
+print(f"<{time_str}>Model saved.")
+
+time_str = time.strftime("%R")
+print(f"<{time_str}>Evaluating model...")
 start_evaluation_time = time.time()
-tabular_model.evaluate(test)
+scores = tabular_model.evaluate(test)
 end_evaluation_time = time.time()
 evaluation_time = end_evaluation_time - start_evaluation_time
-print(f"Model evaluation completed. Elapsed {evaluation_time}s.")
+time_str = time.strftime("%R")
+print(f"<{time_str}>Model evaluation completed. Elapsed {evaluation_time}s.")
 
-print("Test predictions (obtain average inference time)...")
+time_str = time.strftime("%R")
+print(f"<{time_str}>Test predictions (obtain average inference time)...")
 test_rows = test.shape[0]
 start_predictions_time = time.time()
 # predictions columns: [benign_probability, attack_probability, predicted_label]
 predictions = tabular_model.predict(test=test)
 end_predictions_time = time.time()
 predictions_time = end_predictions_time - start_predictions_time
-print(f"Predictions completed. Elapsed {predictions_time}s.")
+time_str = time.strftime("%R")
+print(f"<{time_str}>Predictions completed. Elapsed {predictions_time}s.")
 average_inference_time = predictions_time / test_rows
 print(f"Average inference time: {average_inference_time}s.")
 
@@ -332,19 +344,35 @@ probs = torch.tensor((predictions.iloc[:, 1]).values)
 preds = torch.tensor((predictions.iloc[:, 2]).values)
 test_target = torch.tensor(test['Label'].values)
 confmat = ConfusionMatrix(task='binary', num_classes=num_classes)
-res = confmat(preds, test_target)
+confmat_res = confmat(preds, test_target)
 print("Confusion Matrix:")
-print(f"True Negatives: {res[0, 0]}")
-print(f"False Positives: {res[0, 1]}")
-print(f"False Negatives: {res[1, 0]}")
-print(f"True Positives: {res[1, 1]}")
-f1 = F1Score(task='binary', num_classes=num_classes)
-res = f1(preds, test_target)
-print(f"F1_Score: {res.item()}")
-auroc = AUROC(task="binary")
-res = auroc(probs, test_target)
-print(f"AUROC_Score: {res.item()}")
+print(f"True Negatives: {confmat_res[0, 0].item()}")
+print(f"False Positives: {confmat_res[0, 1].item()}")
+print(f"False Negatives: {confmat_res[1, 0].item()}")
+print(f"True Positives: {confmat_res[1, 1].item()}")
+(scores[0]).update({
+    "TN": confmat_res[0, 0].item(),
+    "FP": confmat_res[0, 1].item(),
+    "FN": confmat_res[1, 0].item(),
+    "TP": confmat_res[1, 1].item(),
+    "avg_inf_time": average_inference_time,
+    "training_time": training_time,
+})
 
-savepath = "Models/ids2018/tabtransformer-" + time.strftime('%Y%m%d-%H%M')
-os.makedirs(savepath)
-tabular_model.save_model(savepath)
+f1 = F1Score(task='binary', num_classes=num_classes)
+f1_res = f1(preds, test_target)
+print(f"F1_Score: {f1_res.item()}")
+auroc = AUROC(task="binary")
+auroc_res = auroc(probs, test_target)
+print(f"AUROC_Score: {auroc_res.item()}")
+
+# Save scores to a .txt file
+scores_txt_path = savepath + "scores.txt"
+with open(scores_txt_path, "w") as f:
+    for metric, score in (scores[0]).items():
+        f.write(f"{metric}: {score}\n")
+
+# Save scores to a .csv file
+scores_csv_path = savepath + "scores.csv"
+scores_df = pd.DataFrame(list((scores[0]).items()), columns=["Metric", "Value"])
+scores_df.to_csv(scores_csv_path, index=False)
