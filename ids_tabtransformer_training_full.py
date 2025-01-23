@@ -8,8 +8,10 @@ from pytorch_tabular import TabularModel
 from pytorch_tabular.config import DataConfig, OptimizerConfig, TrainerConfig
 from pytorch_tabular.models import TabTransformerConfig
 from pytorch_tabular.models.common.heads import LinearHeadConfig
+from pytorch_tabular.utils import get_balanced_sampler, get_class_weighted_cross_entropy
 
 import torch
+#from torch.utils.data import WeightedRandomSampler
 from torchmetrics import ConfusionMatrix, F1Score, AUROC
 
 import ids_preprocessing
@@ -254,6 +256,26 @@ end_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
 num_classes = len(set(train["Label"].values.ravel()))
+num_pos = np.sum(train["Label"] == 1)
+num_neg = np.sum(train["Label"] == 0)
+print("Train stats:")
+print(f"Number of classes: {num_classes}")
+print(f"Number of positive samples: {num_pos}")
+print(f"Number of negative samples: {num_neg}")
+
+# weight batches for imbalanced dataset
+# class_sample_count = np.array(
+#     [len(np.where(train["Label"] == t)[0]) for t in np.unique(train["Label"])])
+# weight = 1. / class_sample_count
+# samples_weight = np.array([weight[t] for t in (train["Label"].astype(int)).to_numpy()])
+
+# samples_weight = torch.from_numpy(samples_weight)
+# samples_weight = samples_weight.double()
+# print(samples_weight)
+# print(len(samples_weight))
+# sampler = WeightedRandomSampler(samples_weight, len(samples_weight), replacement=False)
+sampler = get_balanced_sampler(train['Label'].values.ravel())
+weighted_loss = get_class_weighted_cross_entropy(train["Label"].values.ravel(), mu=1.0)
 
 # prepare model
 data_config = DataConfig(
@@ -300,14 +322,25 @@ tabular_model = TabularModel(
     optimizer_config=optimizer_config,
     trainer_config=trainer_config,
 )
+# training_type = ["simple", "sampler", "weighted"]
+training_type = "weighted"
+
 time_str = time.strftime("%R")
 print(f"<{time_str}> Model initialized.")
 start_training_time = time.time()
-tabular_model.fit(train=train)
+if training_type == "simple":
+    tabular_model.fit(train=train, validation=test)
+elif training_type == "sampler":
+    tabular_model.fit(train=train, validation=test, sampler=sampler)
+elif training_type == "weighted":
+    tabular_model.fit(train=train, validation=test, loss=weighted_loss)
 end_training_time = time.time()
 training_time = end_training_time - start_training_time
 time_str = time.strftime("%R")
 print(f"<{time_str}> Model training completed. Elapsed {training_time}s.")
+# training can generate user warnings along the lines of "no positive/negative in target"
+# especially if sampler or weight aren't used
+# that is caused by some metrics being calculated at the end of each batch
 
 time_str = time.strftime("%R")
 print(f"<{time_str}>Saving model...")
