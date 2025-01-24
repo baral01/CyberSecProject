@@ -287,7 +287,7 @@ model = XGBClassifier(
     learning_rate=0.3,
     objective="binary:logistic",
     eval_metric=["logloss", "error", "auc"],
-    #verbosity=2,
+    verbosity=1,
 )
 # fit model
 start_training_time = time.time()
@@ -320,6 +320,8 @@ recall = recall_score(y_test, y_pred)
 roc_auc = roc_auc_score(y_test, y_pred_proba)
 conf_matrix = confusion_matrix(y_test, y_pred)
 
+# print results to stdout
+print(f"Training time: {training_time}")
 print(f"Average inference time: {infer_time}")
 print(f"Accuracy: {accuracy}")
 print(f"F1 Score: {f1}")
@@ -332,3 +334,30 @@ print(f"False Positives: {conf_matrix[0][1]}")
 print(f"False Negatives: {conf_matrix[1][0]}")
 print(f"True Positives: {conf_matrix[1][1]}")
 
+# save results to files
+metrics_txt_path = savepath + "results.txt"
+metrics_csv_path = savepath + "scores.csv"
+
+# Writing to a .txt file
+with open(metrics_txt_path, "w") as f:
+    f.write(f"Training time: {training_time}\n")
+    f.write(f"Average inference time: {infer_time}\n")
+    f.write(f"Accuracy: {accuracy}\n")
+    f.write(f"F1 Score: {f1}\n")
+    f.write(f"Precision: {precision}\n")
+    f.write(f"Recall: {recall}\n")
+    f.write(f"ROC AUC: {roc_auc}\n")
+    f.write("Confusion Matrix:\n")
+    f.write(f"True Negatives: {conf_matrix[0][0]}\n")
+    f.write(f"False Positives: {conf_matrix[0][1]}\n")
+    f.write(f"False Negatives: {conf_matrix[1][0]}\n")
+    f.write(f"True Positives: {conf_matrix[1][1]}\n")
+
+# Writing to a .csv file
+metrics_data = {
+    "Metric": ["Training_time", "Average_inference_time", "Accuracy", "F1_Score", "Precision", "Recall", "ROC_AUC", "True_Negatives", "False_Positives", "False_Negatives", "True_Positives"],
+    "Value": [training_time, infer_time, accuracy, f1, precision, recall, roc_auc, conf_matrix[0][0], conf_matrix[0][1], conf_matrix[1][0], conf_matrix[1][1]]
+}
+
+metrics_df = pd.DataFrame(metrics_data)
+metrics_df.to_csv(metrics_csv_path, index=False)
