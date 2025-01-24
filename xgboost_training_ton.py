@@ -10,6 +10,8 @@ from sklearn.metrics import (
     roc_auc_score,
     confusion_matrix,
 )
+import numpy as np
+import matplotlib.pyplot as plt 
 import pandas as pd
 from data.ton_iot_dataset import TonIotDataset
 import time
@@ -173,3 +175,166 @@ metrics_data = {
 metrics_df = pd.DataFrame(metrics_data)
 metrics_df.to_csv(metrics_csv_path, index=False)
 
+######## test model with different weights ########
+
+# Calculate the scale_pos_weight
+num_pos = np.sum(y_train == 1)
+num_neg = np.sum(y_train == 0)
+scale_pos_weight = num_neg / num_pos
+# scaling factors
+scaling_factors = [0.25, 0.5, 1, 2, 4]
+
+for i in scaling_factors:
+    print(f"Running model with scale_pos_weight multiplier: {i}")
+    
+    # Create the XGBClassifier with scale_pos_weight
+    model = XGBClassifier(
+        learning_rate=0.3,
+        objective="binary:logistic",
+        eval_metric=["logloss", "error", "auc"],
+        verbosity=1,
+        scale_pos_weight=i * scale_pos_weight,
+    )
+
+    # Fit the model
+    start_time = time.time()
+    time_str = time.strftime("%R")
+    print(f"<{time_str}> Training...")
+    start_training_time = time.time()
+    model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+    end_training_time = time.time()
+    training_time = end_training_time - start_training_time
+    end_time = time.time()
+    time_str = time.strftime("%R")
+    print(f"<{time_str}> Done. Elapsed {end_time - start_time}s.")
+    
+    model.save_model(savepath + f"xgboost_model_scale_weight_f{i*100}.json")
+
+    # Make predictions and compute other scores
+    start_prediction_time = time.time()
+    y_pred = model.predict(X_test)
+    end_prediction_time = time.time()
+    num_rows = X_test.shape[0]
+    infer_time = (end_prediction_time - start_prediction_time) / num_rows
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    accuracy = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_pred_proba)
+    conf_matrix = confusion_matrix(y_test, y_pred)
+
+    # Print results to stdout
+    print(f"Scale_pos_weight: {i * scale_pos_weight}")
+    print(f"Number of positive samples: {num_pos}")
+    print(f"Number of negative samples: {num_neg}")
+    print(f"Training time: {training_time}")
+    print(f"Average inference time: {infer_time}")
+    print(f"Accuracy: {accuracy}")
+    print(f"F1 Score: {f1}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"ROC AUC: {roc_auc}")
+    print("Confusion Matrix:")
+    print(f"True Negatives: {conf_matrix[0][0]}")
+    print(f"False Positives: {conf_matrix[0][1]}")
+    print(f"False Negatives: {conf_matrix[1][0]}")
+    print(f"True Positives: {conf_matrix[1][1]}")
+
+    # Store results
+    results = {
+        "Scale_pos_weight": i * scale_pos_weight,
+        "Training time": training_time,
+        "Average inference time": infer_time,
+        "Accuracy": accuracy,
+        "F1 Score": f1,
+        "Precision": precision,
+        "Recall": recall,
+        "ROC AUC": roc_auc,
+        "True Negatives": conf_matrix[0][0],
+        "False Positives": conf_matrix[0][1],
+        "False Negatives": conf_matrix[1][0],
+        "True Positives": conf_matrix[1][1]
+    }
+    # Save results to a .csv file
+    results_df = pd.DataFrame(list(results.items()), columns=['Metric', 'Score'])    
+    results_df.to_csv(savepath + f"xgboost_resultsscale_weight_f{i*100}.csv", index=False)
+
+# test model with different max_delta_step
+
+max_delta_step_values = [1, 10, 100]
+
+for max_delta_step in max_delta_step_values:
+    print(f"Running model with max_delta_step: {max_delta_step}")
+    
+    # Create the XGBClassifier with max_delta_step
+    model = XGBClassifier(
+        learning_rate=0.3,
+        objective="binary:logistic",
+        eval_metric=["logloss", "error", "auc"],
+        verbosity=1,
+        max_delta_step=max_delta_step,
+    )
+
+    # Fit the model
+    start_time = time.time()
+    time_str = time.strftime("%R")
+    print(f"<{time_str}> Training...")
+    start_training_time = time.time()
+    model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+    end_training_time = time.time()
+    training_time = end_training_time - start_training_time
+    end_time = time.time()
+    time_str = time.strftime("%R")
+    print(f"<{time_str}> Done. Elapsed {end_time - start_time}s.")
+    
+    model.save_model(savepath + f"xgboost_model_max_delta_step_{max_delta_step}.json")
+
+    # Make predictions and compute other scores
+    start_prediction_time = time.time()
+    y_pred = model.predict(X_test)
+    end_prediction_time = time.time()
+    num_rows = X_test.shape[0]
+    infer_time = (end_prediction_time - start_prediction_time) / num_rows
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    accuracy = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_pred_proba)
+    conf_matrix = confusion_matrix(y_test, y_pred)
+
+    # Print results to stdout
+    print(f"max_delta_step: {max_delta_step}")
+    print(f"Training time: {training_time}")
+    print(f"Average inference time: {infer_time}")
+    print(f"Accuracy: {accuracy}")
+    print(f"F1 Score: {f1}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"ROC AUC: {roc_auc}")
+    print("Confusion Matrix:")
+    print(f"True Negatives: {conf_matrix[0][0]}")
+    print(f"False Positives: {conf_matrix[0][1]}")
+    print(f"False Negatives: {conf_matrix[1][0]}")
+    print(f"True Positives: {conf_matrix[1][1]}")
+
+    # Store results
+    results ={
+        "max_delta_step": max_delta_step,
+        "Training time": training_time,
+        "Average inference time": infer_time,
+        "Accuracy": accuracy,
+        "F1 Score": f1,
+        "Precision": precision,
+        "Recall": recall,
+        "ROC AUC": roc_auc,
+        "True Negatives": conf_matrix[0][0],
+        "False Positives": conf_matrix[0][1],
+        "False Negatives": conf_matrix[1][0],
+        "True Positives": conf_matrix[1][1]
+    }
+
+    # Save results to a .csv file
+    results_df = pd.DataFrame(list(results.items()), columns=['Metric', 'Score'])
+    results_df.to_csv(savepath + f"xgboost_results__max_delta_step_{max_delta_step}.csv", index=False)
