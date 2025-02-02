@@ -305,12 +305,8 @@ time_str = time.strftime("%R")
 print(f"<{time_str}> Done. Elapsed {end_time - start_time}s.")
 
 ###training model
-start_time = time.time()
-time_str = time.strftime("%R")
-print(f"<{time_str}> Training...")
-######## test model with different weights ########
 
-# Create the XGBClassifier with scale_pos_weight
+# Create the RandomForestClassifier
 model = RandomForestClassifier(
     n_estimators=100,  # Numero di alberi
     max_depth=6,      # Profondità degli alberi
@@ -323,9 +319,6 @@ time_str = time.strftime("%R")
 print(f"<{time_str}> Training...")
 start_training_time = time.time()
 model.fit(X_train, y_train)
-y_pred = model.predict(X_test.values)
-print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
-#print(classification_report(y_test, y_pred))
 end_training_time = time.time()
 training_time = end_training_time - start_training_time
 end_time = time.time()
@@ -383,14 +376,8 @@ results_df.to_csv(savepath + f"scores.csv", index=False)
 
 ######## test model with different weights ########
 
-# Calculate the scale_pos_weight
 num_pos = np.sum(y_train == 1)
 num_neg = np.sum(y_train == 0)
-scale_pos_weight = num_neg / num_pos
-# scaling factors
-scaling_factors = [0.25, 0.5, 1, 2, 4]
-
-print(y_train.head(10))
 
 class_sample_count = np.array([len(np.where(y_train == t)[0]) for t in np.unique(y_train)])
 weight = 1. / class_sample_count
@@ -409,9 +396,6 @@ time_str = time.strftime("%R")
 print(f"<{time_str}> Training...")
 start_training_time = time.time()
 model.fit(X_train, y_train, sample_weight=samples_weight)
-y_pred = model.predict(X_test.values)
-print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
-print(classification_report(y_test, y_pred))
 end_training_time = time.time()
 training_time = end_training_time - start_training_time
 end_time = time.time()
@@ -427,7 +411,6 @@ end_prediction_time = time.time()
 num_rows = X_test.shape[0]
 infer_time = (end_prediction_time - start_prediction_time) / num_rows
 y_pred_proba = model.predict_proba(X_test)[:, 1]
-print(y_pred_proba.shape)
 accuracy = accuracy_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred)
 precision = precision_score(y_test, y_pred)
@@ -469,7 +452,7 @@ results = {
 results_df = pd.DataFrame(list(results.items()), columns=['Metric', 'Score'])
 results_df.to_csv(savepath + f"randomForest_model_sample_weights.csv", index=False)
 
-# Create the XGBClassifier with scale_pos_weight
+# Create the RandomForestClassifier with balanced class weights
 model = RandomForestClassifier(
     n_estimators=100,  # Numero di alberi
     max_depth=6,      # Profondità degli alberi
@@ -483,9 +466,6 @@ time_str = time.strftime("%R")
 print(f"<{time_str}> Training...")
 start_training_time = time.time()
 model.fit(X_train, y_train)
-y_pred = model.predict(X_test.values)
-print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
-#print(classification_report(y_test, y_pred))
 end_training_time = time.time()
 training_time = end_training_time - start_training_time
 end_time = time.time()
