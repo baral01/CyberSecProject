@@ -1,0 +1,13 @@
+Metric,Score
+max_delta_step,100.0
+Training time,137.77564239501953
+Average inference time,2.4306999318949217e-07
+Accuracy,0.9969314833745222
+F1 Score,0.9984065518626164
+Precision,0.9999993014850893
+Recall,0.9968188678781087
+ROC AUC,0.9999976941616491
+True Negatives,159099.0
+False Positives,3.0
+False Negatives,13706.0
+True Positives,4294823.0

@@ -1,0 +1,13 @@
+Metric,Score
+Scale_pos_weight,4.90667919592029
+Training time,656.0206906795502
+Average inference time,1.2123026581136582e-06
+Accuracy,0.9900581810632636
+F1 Score,0.9699325095366959
+Precision,0.9938263356228453
+Recall,0.9471606321875676
+ROC AUC,0.9968181294500659
+True Negatives,2693708.0
+False Positives,3234.0
+False Negatives,29043.0
+True Positives,520604.0

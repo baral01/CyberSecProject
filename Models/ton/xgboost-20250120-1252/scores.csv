@@ -1,0 +1,12 @@
+Metric,Value
+Training_time,142.19535517692566
+Average_inference_time,2.501345007736874e-07
+Accuracy,0.9969314833745222
+F1_Score,0.9984065518626164
+Precision,0.9999993014850893
+Recall,0.9968188678781087
+ROC_AUC,0.999997694161649
+True_Negatives,159099.0
+False_Positives,3.0
+False_Negatives,13706.0
+True_Positives,4294823.0
