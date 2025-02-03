@@ -2,7 +2,12 @@
 __pycache__
 .pt_tmp/
 lightning_logs/
-Models/
+Models/**/*.txt
+Models/**/*.json
+Models/**/*.yml
+Models/**/*.sav
+Models/**/*.ckpt
+Models/**/*.joblib
 Processed_datasets/
 TabTransformerPytorch/
 Pytorch_Frame/
