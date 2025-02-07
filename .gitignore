@@ -10,7 +10,6 @@ Models/**/*.ckpt
 Models/**/*.joblib
 Processed_datasets/
 TabTransformerPytorch/
-Pytorch_Frame/
 Pytorch_tabular/
 saved_models/
 requirements-tabtransformer.txt
