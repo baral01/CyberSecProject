@@ -176,7 +176,6 @@ results_df.to_csv(savepath + f"scores.csv", index=False)
 
 ######## test model with different weights ########
 
-# Calculate the scale_pos_weight
 num_pos = np.sum(y_train == 1)
 num_neg = np.sum(y_train == 0)
 
@@ -253,7 +252,7 @@ results = {
 results_df = pd.DataFrame(list(results.items()), columns=['Metric', 'Score'])
 results_df.to_csv(savepath + f"randomForest_model_sample_weights.csv", index=False)
 
-# Create the XGBClassifier with scale_pos_weight
+# Create the RandomForestClassifier with class_weight balanced
 model = RandomForestClassifier(
     n_estimators=100,  # Numero di alberi
     max_depth=6,      # Profondità degli alberi

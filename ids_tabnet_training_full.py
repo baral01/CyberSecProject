@@ -18,13 +18,6 @@ import preprocessing.ids_preprocessing as ids_preprocessing
 import data.cse_ids_dataset as cse_ids_dataset
 
 
-def binarize_label(df):
-    df.rename(columns={"Label": "label_string"}, inplace=True)
-    df['Label'] = np.where(df['label_string'] == "Benign", np.zeros(df['label_string'].shape, dtype='int'),
-                           np.ones(df['label_string'].shape, dtype='int'))
-    df.drop(columns=['label_string'], inplace=True)
-
-
 # get dataset
 dirpath = "Processed_datasets/CSE-CIC-IDS2018-AWS/cleaned/"
 savepath = "Models/ids2018/tabnet-" + time.strftime('%Y%m%d-%H%M') + "/"
@@ -186,7 +179,6 @@ training_time = end_training_time - start_training_time
 time_str = time.strftime("%R")
 print(f"<{time_str}> Model training completed. Elapsed {training_time}s.")
 # training can generate user warnings along the lines of "no positive/negative in target"
-# especially if sampler or weight aren't used
 # that is caused by some metrics being calculated at the end of each batch
 
 time_str = time.strftime("%R")

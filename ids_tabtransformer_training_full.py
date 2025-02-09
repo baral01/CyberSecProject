@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 
-from sklearn.metrics import accuracy_score, log_loss
 from sklearn.model_selection import train_test_split
 
 from pytorch_tabular import TabularModel
@@ -180,7 +179,6 @@ training_time = end_training_time - start_training_time
 time_str = time.strftime("%R")
 print(f"<{time_str}> Model training completed. Elapsed {training_time}s.")
 # training can generate user warnings along the lines of "no positive/negative in target"
-# especially if sampler or weight aren't used
 # that is caused by some metrics being calculated at the end of each batch
 
 time_str = time.strftime("%R")
