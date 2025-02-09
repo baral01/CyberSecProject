@@ -11,24 +11,37 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 import numpy as np
-import matplotlib.pyplot as plt 
 import pandas as pd
-from data.ton_iot_dataset import TonIotDataset
+import data.ton_iot_dataset as ton_iot_dataset
+import preprocessing.ton_preprocessing as ton_preprocessing
 import time
 import os
 
 # get dataset
-filepath ="Processed_datasets/TON_IoT/Network_dataset_ts_extracted.csv"
-ton = TonIotDataset(filepath)
+filepath ="Processed_datasets/TON_IoT/Network_dataset.csv"
+savepath = "Models/ton/xgboost-" + time.strftime('%Y%m%d-%H%M') + "/"
+cols = ton_iot_dataset.COLS
+types = ton_iot_dataset.COLS_TYPES
+
 start_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Loading {filepath}...")
-df = ton.load_dataset()
+df = pd.read_csv(filepath, sep=",", usecols=cols, dtype=types)
 end_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
 
 ###preprocessing
+
+# convert timestamps
+times_features = ["dow", "hour", "minute"]
+start_time = time.time()
+time_str = time.strftime("%R")
+print(f"<{time_str}> Replacing 'ts' column with {times_features}...")
+ton_preprocessing.convert_timestamps(df, times_features)
+end_time = time.time()
+time_str = time.strftime("%R")
+print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
 
 # drop unused label
 start_time = time.time()
@@ -38,7 +51,6 @@ df.drop(columns=['type'], inplace=True)
 end_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
-
 
 #separate features from label
 start_time = time.time()
@@ -110,7 +122,6 @@ training_time = end_training_time - start_training_time
 end_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Done. Elapsed {training_time}s.")
-savepath = "Models/ton/xgboost-" + time.strftime('%Y%m%d-%H%M') + "/"
 os.makedirs(savepath)
 model.save_model(savepath + "xgboost_model.json")
 scores = model.evals_result()

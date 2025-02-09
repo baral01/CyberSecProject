@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 
-from sklearn.metrics import accuracy_score, log_loss
 from sklearn.model_selection import train_test_split
 
 from pytorch_tabular import TabularModel
@@ -13,241 +12,21 @@ from pytorch_tabular.utils import get_balanced_sampler, get_class_weighted_cross
 import torch
 from torchmetrics import ConfusionMatrix, F1Score, AUROC
 
+import data.ton_iot_dataset as ton_iot_dataset
 import time
 import os
 
 
-class TonIotDataset:
-
-    def __init__(self, path, columns=None, types=None):
-        self.path = path
-        self.dirpath = os.path.dirname(path)
-
-        if columns is None:
-            self.__columns = [
-                "dow",
-                "hour",
-                "minute",
-                "src_ip",
-                "src_port",
-                "dst_ip",
-                "dst_port",
-                "proto",
-                "service",
-                "duration",
-                "src_bytes",
-                "dst_bytes",
-                "conn_state",
-                "missed_bytes",
-                "src_pkts",
-                "src_ip_bytes",
-                "dst_pkts",
-                "dst_ip_bytes",
-                "dns_query",
-                "dns_qclass",
-                "dns_qtype",
-                "dns_rcode",
-                "dns_AA",
-                "dns_RD",
-                "dns_RA",
-                "dns_rejected",
-                "ssl_version",
-                "ssl_cipher",
-                "ssl_resumed",
-                "ssl_established",
-                "ssl_subject",
-                "ssl_issuer",
-                "http_trans_depth",
-                "http_method",
-                "http_uri",
-                "http_referrer",
-                "http_version",
-                "http_request_body_len",
-                "http_response_body_len",
-                "http_status_code",
-                "http_user_agent",
-                "http_orig_mime_types",
-                "http_resp_mime_types",
-                "weird_name",
-                "weird_addl",
-                "weird_notice",
-                "label",
-                "type",
-            ]
-        else:
-            self.__columns = columns
-
-        if types is None:
-            self.__types = {
-                "dow": "string",
-                "hour": "int8",
-                "minute": "int8",
-                "src_ip": "string",
-                "src_port": "int32",
-                "dst_ip": "string",
-                "dst_port": "int32",
-                "proto": "string",
-                "service": "string",
-                "duration": "float64",
-                "src_bytes": "int64",
-                "dst_bytes": "int64",
-                "conn_state": "string",
-                "missed_bytes": "int64",
-                "src_pkts": "int64",
-                "src_ip_bytes": "int64",
-                "dst_pkts": "int64",
-                "dst_ip_bytes": "int64",
-                "dns_query": "string",
-                "dns_qclass": "int32",
-                "dns_qtype": "int32",
-                "dns_rcode": "int32",
-                "dns_AA": "string",  # boolean in doc
-                "dns_RD": "string",  # boolean in doc
-                "dns_RA": "string",  # boolean in doc
-                "dns_rejected": "string",  # boolean in doc
-                "ssl_version": "string",
-                "ssl_cipher": "string",
-                "ssl_resumed": "string",  # boolean in doc
-                "ssl_established": "string",
-                "ssl_subject": "string",
-                "ssl_issuer": "string",
-                "http_trans_depth": "string",  # on description doc, its type is a number
-                "http_method": "string",
-                "http_uri": "string",
-                "http_referrer": "string",  # not present on description doc
-                "http_version": "string",
-                "http_request_body_len": "Int64",
-                "http_response_body_len": "Int64",
-                "http_status_code": "Int16",
-                "http_user_agent": "string",  # on description doc this field's type is a number
-                "http_orig_mime_types": "string",
-                "http_resp_mime_types": "string",
-                "weird_name": "string",
-                "weird_addl": "string",
-                "weird_notice": "string",  # boolean in doc
-                "label": "Int8",  # only 0 and 1 as numbers: tag normal and attack records
-                "type": "string",
-            }
-        else:
-            self.__types = types
-
-    def load_dataset(self, cols=None):
-        if cols is None:
-            cols = self.__columns
-        self.cols_in_use = cols
-        df = pd.read_csv(self.path, sep=",", usecols=cols, dtype=self.__types)
-        return df
-
-    def save_dataset(self, dataframe, filename, dirpath=None):
-        if dirpath is None:
-            dirpath = self.dirpath
-        save_path = dirpath + filename
-        dataframe.to_csv(save_path, sep=",", index=False, index_label=False)
 # get dataset
-
-
 filepath = "Processed_datasets/TON_IoT/Network_dataset.csv"
-cols = [
-    "ts",
-    "src_ip",
-    "src_port",
-    "dst_ip",
-    "dst_port",
-    "proto",
-    "service",
-    "duration",
-    "src_bytes",
-    "dst_bytes",
-    "conn_state",
-    "missed_bytes",
-    "src_pkts",
-    "src_ip_bytes",
-    "dst_pkts",
-    "dst_ip_bytes",
-    "dns_query",
-    "dns_qclass",
-    "dns_qtype",
-    "dns_rcode",
-    "dns_AA",
-    "dns_RD",
-    "dns_RA",
-    "dns_rejected",
-    "ssl_version",
-    "ssl_cipher",
-    "ssl_resumed",
-    "ssl_established",
-    "ssl_subject",
-    "ssl_issuer",
-    "http_trans_depth",
-    "http_method",
-    "http_uri",
-    "http_referrer",
-    "http_version",
-    "http_request_body_len",
-    "http_response_body_len",
-    "http_status_code",
-    "http_user_agent",
-    "http_orig_mime_types",
-    "http_resp_mime_types",
-    "weird_name",
-    "weird_addl",
-    "weird_notice",
-    "label",
-    "type",
-]
-types = {
-    "ts": "int64",  # it is a timestamp
-    "src_ip": "string",
-    "src_port": "int16",
-    "dst_ip": "string",
-    "dst_port": "int16",
-    "proto": "string",
-    "service": "string",
-    "duration": "float64",
-    "src_bytes": "Int64",
-    "dst_bytes": "Int64",
-    "conn_state": "string",
-    "missed_bytes": "Int64",
-    "src_pkts": "Int64",
-    "src_ip_bytes": "Int64",
-    "dst_pkts": "Int64",
-    "dst_ip_bytes": "Int64",
-    "dns_query": "string",
-    "dns_qclass": "Int32",
-    "dns_qtype": "Int32",
-    "dns_rcode": "Int32",
-    "dns_AA": "string",  # boolean in doc
-    "dns_RD": "string",  # boolean in doc
-    "dns_RA": "string",  # boolean in doc
-    "dns_rejected": "string",  # boolean in doc
-    "ssl_version": "string",
-    "ssl_cipher": "string",
-    "ssl_resumed": "string",  # boolean in doc
-    "ssl_established": "string",
-    "ssl_subject": "string",
-    "ssl_issuer": "string",
-    "http_trans_depth": "string",  # on description doc, its type is a number
-    "http_method": "string",
-    "http_uri": "string",
-    "http_referrer": "string",  # not present on description doc
-    "http_version": "string",
-    "http_request_body_len": "Int64",
-    "http_response_body_len": "Int64",
-    "http_status_code": "Int16",
-    "http_user_agent": "string",  # on description doc, its type is a number
-    "http_orig_mime_types": "string",
-    "http_resp_mime_types": "string",
-    "weird_name": "string",
-    "weird_addl": "string",
-    "weird_notice": "string",  # boolean in doc
-    "label": "Int8",  # only 0 and 1 as numbers: tag normal and attack records
-    "type": "string",
-}
-ton = TonIotDataset(filepath, columns=cols, types=types)
+savepath = "Models/ton/tabnet-" + time.strftime('%Y%m%d-%H%M') + "/"
+cols = ton_iot_dataset.COLS
+types = ton_iot_dataset.COLS_TYPES
+
 start_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Loading {filepath}...")
-df = ton.load_dataset()
+df = pd.read_csv(filepath, sep=",", usecols=cols, dtype=types)
 end_time = time.time()
 time_str = time.strftime("%R")
 print(f"<{time_str}> Done. Elapsed {end_time-start_time}s.")
@@ -363,11 +142,9 @@ time_str = time.strftime("%R")
 print(f"<{time_str}> Model training completed. Elapsed {training_time}s.")
 # training can generate user warnings along the lines of "no positive/negative samples in target"
 # that is caused by some metrics being calculated at the end of each batch
-# only trust the metrics calculated using the test set
 
 time_str = time.strftime("%R")
 print(f"<{time_str}>Saving model...")
-savepath = "Models/ton/tabnet-" + time.strftime('%Y%m%d-%H%M') + "/"
 os.makedirs(savepath)
 tabular_model.save_model(savepath)
 time_str = time.strftime("%R")
