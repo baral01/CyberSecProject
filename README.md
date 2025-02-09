@@ -13,9 +13,10 @@
 1. Install Python 3.11
 2. Install requirements `pip install -r requirements.txt`
 3. Change datasets' paths inside the scripts
-4. Run script
+4. Run script `python <training_script_name.py>`
 
 ## Datasets used
 
-* ToN_IoT: drive folder link
-* CSE-CIC-IDS2018: drive folder link
+* ToN_IoT: [source](https://research.unsw.edu.au/projects/toniot-datasets)
+* CSE-CIC-IDS2018: [source](https://www.unb.ca/cic/datasets/ids-2018.html)
+* Link to OneDrive folder: [datasets](https://liveunibo-my.sharepoint.com/:f:/g/personal/simone_sgalla_studio_unibo_it/EoXHocrm3VpPhe7T3qwzS8cByv1Vz03xrex9txYj9-AEvA?e=nAsa7k)
