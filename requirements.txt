@@ -1,0 +1,10 @@
+# assuming Python3.11
+xgboost
+scikit-learn
+category-encoders
+joblib
+pandas
+numpy
+pytorch-tabular
+torchmetrics
+requests
