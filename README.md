@@ -2,7 +2,7 @@
 
 ## Project structure
 
-* `data` folder: contains constant about datasets.
+* `data` folder: contains constants about datasets.
 * `Models` folder: contains trainings' results.
 * `preprocessing` folder: contains scripts and functions used for preprocessing operations.
 * `misc` folder: contains miscellanous scripts and outputs that helped while developing the project, but they aren't used for the project's purpose.
